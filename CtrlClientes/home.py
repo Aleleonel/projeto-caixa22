@@ -1073,9 +1073,9 @@ class AberturaCaixa(QDialog):
     def __init__(self, *args, **kwargs):
         super(AberturaCaixa, self).__init__(*args, **kwargs)
 
-        d = QDate.currentDate()
-        dataAtual = d.toString(Qt.ISODate)
-        dataAtual = str(dataAtual)
+        self.d = QDate.currentDate()
+        self.dataAtual = self.d.toString(Qt.ISODate)
+        self.dataAtual = str(self.dataAtual)
     
         layout = QVBoxLayout()
 
@@ -1085,31 +1085,62 @@ class AberturaCaixa(QDialog):
 
         self.lbl_titulo = QLabel("Caixa")
         self.lbl_titulo.setFont(QFont("Times", 42, QFont.Bold))
-        # self.lbl_titulo.setPixmap(QPixmap('Icones/add.png'))
-        # self.lbl_titulo.setStyleSheet("border-radius: 25px;border: 1px solid black;")
         self.lbl_titulo.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.lbl_titulo)
        
 
         self.dataabertura = QLineEdit()
-        self.dataabertura.setPlaceholderText(dataAtual)
+        self.dataabertura.setPlaceholderText(self.dataAtual)
         self.dataabertura.setEnabled(False)
         layout.addWidget(self.dataabertura)
 
         self.caixainicio = QLineEdit()
+        self.onlyFloat = QDoubleValidator()
+        self.caixainicio.setValidator(self.onlyFloat)
         self.caixainicio.setPlaceholderText("R$ Valor inicial")
         layout.addWidget(self.caixainicio)
 
         self.buttonAdd = QPushButton("Add.", self)
         self.buttonAdd.setIcon(QIcon("Icones/add.png"))
         self.buttonAdd.setIconSize(QSize(40, 40))
-        self.buttonAdd.setMinimumHeight(40)
-        # self.buttonAdd.setEnabled(False)
+        self.buttonAdd.setMinimumHeight(40) 
+        self.buttonAdd.setEnabled(False) 
+        self.buttonAdd.clicked.connect(self.livrocaixa)             
         layout.addWidget(self.buttonAdd)
-
-        
-
         self.setLayout(layout)
+        
+        self.caixainicio.textChanged[str].connect(self.check_disable)
+    
+    def check_disable(self):
+        """Habilita o botão adicionar valor livro caixa apenas se tiver valor no text"""
+        if self.caixainicio.text():
+            self.buttonAdd.setEnabled(True)           
+            
+        else:
+            self.buttonAdd.setEnabled(False)
+
+    
+    def livrocaixa(self):
+        self.d = QDate.currentDate()
+        self.dataAtual = self.d.toString(Qt.ISODate)
+        self.dataAtual = str(self.dataAtual)
+        self.status = 'I'
+        self.valorcaixainiado = 0
+        self.total = 0
+
+
+        self.valorcaixainiado += float(self.caixainicio.text())
+        self.total += self.valorcaixainiado
+        
+        self.cursor = conexao.banco.cursor()
+        comando_sql = "INSERT INTO livro (dataAtual, valor, total, status) VALUES (%s, %s, %s, %s)"
+        dados = self.dataAtual, self.valorcaixainiado, self.total, self.status
+        self.cursor.execute(comando_sql, dados)
+        conexao.banco.commit()
+        # self.close()
+
+        self.hide()
+        
 
 class DataEntryForm(QWidget):
     def __init__(self):
@@ -1157,12 +1188,22 @@ class DataEntryForm(QWidget):
 
         self.layoutRight = QVBoxLayout()
 
-        self.layoutRight.setSpacing(20)
+        self.layoutRight.setSpacing(10)
 
                 
-        self.butonCupon = QPushButton("Abrir", self)
-        self.butonCupon.setGeometry(200, 150, 40, 40)
+        self.butonCupon = QPushButton("Abrir Caixa", self)
+        self.butonCupon.setIcon(QIcon("Icones/dollars.png"))
+        self.butonCupon.setIconSize(QSize(40, 40))
+        self.butonCupon.setMinimumHeight(40)       
         self.layoutRight.addWidget(self.butonCupon)
+
+        self.butonFechar = QPushButton("Fechar Caixa", self)
+        self.butonFechar.setIcon(QIcon("Icones/quit.png"))
+        self.butonFechar.setIconSize(QSize(40, 40))
+        self.butonFechar.setMinimumHeight(40) 
+        self.butonFechar.setEnabled(False)       
+        self.layoutRight.addWidget(self.butonFechar)
+
         
         self.lbl_titulo = QLabel("Caixa")
         self.lbl_titulo.setFont(QFont("Times", 42, QFont.Bold))
