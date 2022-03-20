@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtPrintSupport import *
 
-import time, datetime
+from datetime import date, datetime, time
+# import time, datetime, date
 import os
 import sys
 import csv
@@ -1137,7 +1138,7 @@ class AberturaCaixa(QDialog):
         dados = self.dataAtual, self.valorcaixainiado, self.total, self.status
         self.cursor.execute(comando_sql, dados)
         conexao.banco.commit()
-        # self.close()
+        # self.close()       
 
         self.hide()
         
@@ -1191,18 +1192,18 @@ class DataEntryForm(QWidget):
         self.layoutRight.setSpacing(10)
 
                 
-        self.butonCupon = QPushButton("Abrir Caixa", self)
-        self.butonCupon.setIcon(QIcon("Icones/dollars.png"))
-        self.butonCupon.setIconSize(QSize(40, 40))
-        self.butonCupon.setMinimumHeight(40)       
-        self.layoutRight.addWidget(self.butonCupon)
+        self.butonAbrirCaixa = QPushButton("Abrir Caixa", self)
+        self.butonAbrirCaixa.setIcon(QIcon("Icones/dollars.png"))
+        self.butonAbrirCaixa.setIconSize(QSize(40, 40))
+        self.butonAbrirCaixa.setMinimumHeight(40)       
+        self.layoutRight.addWidget(self.butonAbrirCaixa)
 
-        self.butonFechar = QPushButton("Fechar Caixa", self)
-        self.butonFechar.setIcon(QIcon("Icones/quit.png"))
-        self.butonFechar.setIconSize(QSize(40, 40))
-        self.butonFechar.setMinimumHeight(40) 
-        self.butonFechar.setEnabled(False)       
-        self.layoutRight.addWidget(self.butonFechar)
+        self.butonFecharCaixa = QPushButton("Fechar Caixa", self)
+        self.butonFecharCaixa.setIcon(QIcon("Icones/quit.png"))
+        self.butonFecharCaixa.setIconSize(QSize(40, 40))
+        self.butonFecharCaixa.setMinimumHeight(40) 
+        self.butonFecharCaixa.setEnabled(False)       
+        self.layoutRight.addWidget(self.butonFecharCaixa)
 
         
         self.lbl_titulo = QLabel("Caixa")
@@ -1318,8 +1319,8 @@ class DataEntryForm(QWidget):
         # self.butotnCupon.clicked.connect(self.cupom)
         self.buttongerar.clicked.connect(self.gerar)
         self.buttonAdd.clicked.connect(self.add_entry)
-
-        self.butonCupon.clicked.connect(self.abrircaixa)
+        self.butonAbrirCaixa.clicked.connect(self.abrircaixa)
+        self.butonFecharCaixa.clicked.connect(self.fecharcaixa)
         
 
         self.lineEditDescription.textChanged[str].connect(self.check_disable)
@@ -1328,9 +1329,87 @@ class DataEntryForm(QWidget):
         self.fill_table()
     
     def abrircaixa(self):
+        self.butonAbrirCaixa.setEnabled(False)
+        self.butonFecharCaixa.setEnabled(True) 
         dlg = AberturaCaixa()
         dlg.exec()
-       
+    
+    def fecharcaixa(self):
+        dataAtual = QDate.currentDate()            
+        self.soma_fechamento = 0
+        valor_do_dia = []
+        decimal_lista = []
+        try:
+            self.cursor = conexao.banco.cursor()
+            __fechamento = "SELECT ultupdate, valor_total FROM pedidocaixa "
+            self.cursor.execute(__fechamento)
+            fechamento_diario = self.cursor.fetchall()
+           
+            data_fechamento = [fecha for fecha in fechamento_diario]
+            for dtnumber in range(len(data_fechamento)):                
+                if dataAtual == data_fechamento[dtnumber][0]:                    
+                    print("Valor itens Melecas: ", data_fechamento[dtnumber][1])  
+
+                    valor_do_dia.append(data_fechamento[dtnumber][1])
+                    self.soma_fechamento += data_fechamento[dtnumber][1]
+            
+            print("Data atual: ", data_fechamento[dtnumber][0]) 
+            print("Valor total: ", self.soma_fechamento)
+            
+                                    
+            y = 0
+            pdf = canvas.Canvas("fechamento_caixa.pdf")
+            pdf.setFont("Times-Bold", 18)
+            pdf.drawString(90, 800, "RELATÓRIO DE FECHAMENTO DO CAIXA:")
+            pdf.setFont("Times-Bold", 12)
+
+            pdf.drawString(10, 700 - y, str('20/03/2022'))  # DATA DO FECHAMENTO
+            pdf.drawString(90, 700 - y, str('500'))  # VALOR DA ABERTURA
+
+            pdf.drawString(10, 750, "Data")
+            pdf.drawString(90, 750, "Abertura")
+            pdf.drawString(160, 750, "Recebido.")
+            pdf.drawString(290, 750, "Total Recebido.")
+            pdf.drawString(410, 750, "Total.")
+            pdf.drawString(3, 750,
+                        "________________________________________________________________________________________")
+
+            total = 0
+            subtotal = 0
+            i = [i for i in valor_do_dia]
+            cont = len(i)
+            c = 0
+            while cont >0:                 
+                print("Valor por itens: ", i[c])
+               
+           
+                y += 50
+                # pdf.drawString(10, 750 - y, str('20/03/2022'))  # CODIGO PRODUTO
+                # pdf.drawString(90, 750 - y, str('500'))  # DESCRIÇAO PRODUTO
+                pdf.drawString(160, 750 - y, str(i[c]))  # QUANTIDADE VENDIDA
+                # pdf.drawString(310, 750 - y, str(i))  # PREÇO UNITARIO
+                # subtotal = (valor_do_dia[i][3]) * i[c]  # QTD x PREÇO UNITARIO
+                # total += subtotal
+                # pdf.drawString(390, 750 - y, str(self.soma_fechamento))  # SUB TOTAL
+
+                cont -= 1
+                c += 1
+
+            
+            pdf.drawString(290, 750 - y, str(self.soma_fechamento))  # TOTAL
+            pdf.drawString(410, 750 - y, str(self.soma_fechamento + 500))  # TOTAL
+
+            pdf.save()
+
+            # with open('recibo.csv', 'w') as f:
+            #     csv_writer = csv.writer(f)
+            #     rows = [i for i in valor_do_dia]
+            #     csv_writer.writerows(rows)
+
+                        
+            
+        except Exception as e:
+            print(e)
 
     def addCliente(self):
         entryItem = self.lineEditCliente.text()
